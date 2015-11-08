@@ -7,11 +7,12 @@ VALUE extract_points_from_coordinate_sequence(GEOSContextHandle_t context, const
   VALUE result = Qnil;
   VALUE point;
   unsigned int count;
+  unsigned int i;
   double val;
 
   if(GEOSCoordSeq_getSize_r(context, coord_sequence, &count)) {
     result = rb_ary_new2(count);
-    for(size_t i = 0; i < count; ++i) {
+    for(i = 0; i < count; ++i) {
       point = rb_ary_new2(2);
       GEOSCoordSeq_getX_r(context, coord_sequence, i, &val);
       rb_ary_push(point, rb_float_new(val));
@@ -31,6 +32,7 @@ VALUE extract_points_from_polygon(GEOSContextHandle_t context, const GEOSGeometr
   const GEOSGeometry* ring;
   const GEOSCoordSequence* coord_sequence;
   unsigned int interior_ring_count;
+  unsigned int i;
 
   if (polygon) {
     ring = GEOSGetExteriorRing_r(context, polygon);
@@ -42,7 +44,7 @@ VALUE extract_points_from_polygon(GEOSContextHandle_t context, const GEOSGeometr
 
       rb_ary_push(result, extract_points_from_coordinate_sequence(context, coord_sequence));
 
-      for(size_t i = 0; i < interior_ring_count; ++i) {
+      for(i = 0; i < interior_ring_count; ++i) {
         ring = GEOSGetInteriorRingN_r(context, polygon, i);
         coord_sequence = GEOSGeom_getCoordSeq_r(context, ring);
         if(coord_sequence) {
