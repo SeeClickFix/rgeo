@@ -1,3 +1,8 @@
+addons:
+  apt:
+    packages:
+    - libgeos-dev
+    - libproj-dev
 language: ruby
 rvm:
   - 1.9.3
@@ -6,5 +11,5 @@ rvm:
   - 2.2
   - rbx-2
 before_install:
-  - sudo apt-get update
-  - sudo apt-get install libgeos-dev libproj-dev
+  - ll /usr/lib/libgeos*
+  # - sudo ln -s /usr/lib/libgeos-*.so /usr/lib/libgeos.so
