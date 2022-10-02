@@ -8,7 +8,6 @@
 def create_dummy_makefile
   File.open("Makefile", "w") { |f_| f_.write(".PHONY: install\ninstall:\n") }
 end
-raise
 
 if RUBY_DESCRIPTION =~ /^jruby\s/
   create_dummy_makefile
@@ -25,6 +24,8 @@ else
       $libs << " " + flag unless $libs.include?(flag)
     end
   end
+
+  raise "this is rgeo build"
 
   found_geos_ = false
   if have_header("geos_c.h")
