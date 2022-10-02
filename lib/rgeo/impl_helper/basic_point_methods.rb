@@ -18,7 +18,7 @@ module RGeo
         if extra.size > 0
           raise ArgumentError, "Too many arguments for point initializer"
         end
-        validate_geometry
+        init_geometry
       end
 
       def x
@@ -45,12 +45,22 @@ module RGeo
         Feature::Point
       end
 
-      def is_empty?
+      def empty?
         false
       end
 
-      def is_simple?
+      def is_empty?
+        warn "The is_empty? method is deprecated, please use the empty? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        empty?
+      end
+
+      def simple?
         true
+      end
+
+      def is_simple?
+        warn "The is_simple? method is deprecated, please use the simple? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        simple?
       end
 
       def envelope

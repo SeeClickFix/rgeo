@@ -6,10 +6,14 @@
 #
 # -----------------------------------------------------------------------------
 
-require "test_helper"
+require_relative "../test_helper"
 
 class GeosPolygonTest < Minitest::Test # :nodoc:
   include RGeo::Tests::Common::PolygonTests
+
+  def assert_close_enough(p1, p2)
+    assert((p1.x - p2.x).abs < 0.00000001 && (p1.y - p2.y).abs < 0.00000001)
+  end
 
   def setup
     @factory = RGeo::Geos.factory
@@ -109,7 +113,14 @@ class GeosPolygonTest < Minitest::Test # :nodoc:
     buffered_line_string =
       line_string.buffer_with_style(0.3, RGeo::Geos::CAP_SQUARE, RGeo::Geos::JOIN_MITRE, 5)
 
-    assert_equal polygon, buffered_line_string
+    # having issues with floating point errors on some systems
+    # 4.3 -> 4.29999999999999, for example, and throws an error
+    # iterating through points and using assert_in_delta instead
+    # of assert_equal
+    buffered_points = buffered_line_string.exterior_ring.points
+    polygon.exterior_ring.points.each_with_index do |pt, idx|
+      assert_close_enough(pt, buffered_points[idx])
+    end
   end
 
   def test_is_valid_polygon
@@ -134,7 +145,7 @@ class GeosPolygonTest < Minitest::Test # :nodoc:
     outer_ring = @factory.linear_ring(points_arr)
     polygon = @factory.polygon(outer_ring)
 
-    assert_equal(polygon.invalid_reason, "Self-intersection[0 0 0]")
+    assert_equal("Self-intersection", polygon.invalid_reason)
   end
 
   def test_invalid_reason_with_valid_polygon
@@ -142,6 +153,23 @@ class GeosPolygonTest < Minitest::Test # :nodoc:
     points_arr = polygon_coordinates.map{ |v| @factory.point(v[0], v[1]) }
     outer_ring = @factory.linear_ring(points_arr)
     polygon = @factory.polygon(outer_ring)
-    polygon.invalid_reason
+    assert_nil(polygon.invalid_reason)
+  end
+
+  def test_self_intersecting_polygon
+    # issue 218
+    polygon_coordinates = [[0, 0], [1, 1], [0, 1], [1, 0], [0, 0]]
+    points_arr = polygon_coordinates.map{ |v| @factory.point(v[0], v[1]) }
+    outer_ring = @factory.linear_ring(points_arr)
+    polygon = @factory.polygon(outer_ring)
+
+    refute(polygon.simple?)
+  end
+
+  def test_polygonize
+    input = @factory.parse_wkt("POLYGON ((0 0, 1 1, 1 0, 0 0))")
+    expected = @factory.parse_wkt("GEOMETRYCOLLECTION (POLYGON ((0 0, 1 1, 1 0, 0 0)))")
+
+    assert_equal expected, input.polygonize
   end
 end if RGeo::Geos.capi_supported?

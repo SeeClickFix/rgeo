@@ -12,6 +12,22 @@ module RGeo
       def srid
         factory.srid
       end
+
+      def coordinate_dimension
+        factory.coordinate_dimension
+      end
+
+      def spatial_dimension
+        factory.spatial_dimension
+      end
+
+      def is_3d?
+        factory.property(:has_z_coordinate)
+      end
+
+      def measured?
+        factory.property(:has_m_coordinate)
+      end
     end
 
     module SphericalPointMethods # :nodoc:
@@ -79,7 +95,8 @@ module RGeo
 
       private
 
-      def validate_geometry
+      # Ensure coordinates fall within a valid range.
+      def init_geometry
         if @x < -180.0 || @x > 180.0
           @x = @x % 360.0
           @x -= 360.0 if @x > 180.0
@@ -97,7 +114,7 @@ module RGeo
         end
       end
 
-      def is_simple?
+      def simple?
         len = arcs.length
         return false if arcs.any?(&:degenerate?)
         return true if len == 1
@@ -120,8 +137,73 @@ module RGeo
         true
       end
 
+      def is_simple?
+        warn "The is_simple? method is deprecated, please use the simple? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        simple?
+      end
+
       def length
         arcs.inject(0.0) { |sum, arc| sum + arc.length } * SphericalMath::RADIUS
+      end
+
+      def intersects?(rhs)
+        case rhs
+        when Feature::LineString
+          intersects_line_string?(rhs)
+        else
+          super
+        end
+      end
+
+      def crosses?(rhs)
+        case rhs
+        when Feature::LineString
+          crosses_line_string?(rhs)
+        else
+          super
+        end
+      end
+
+      private
+
+      # TODO: replace with better algorithm (https://github.com/rgeo/rgeo/issues/274)
+      # Very simple algorithm to determine if 2 LineStrings intersect.
+      # Uses a nested for loop to look at each arc in the LineStrings and
+      # check if each arc intersects.
+      #
+      # @param [RGeo::Geographic::SphericalLineStringImpl] rhs
+      #
+      # @return [Boolean]
+      def intersects_line_string?(rhs)
+        arcs.each do |arc|
+          rhs.arcs.each do |rhs_arc|
+            return true if arc.intersects_arc?(rhs_arc)
+          end
+        end
+
+        false
+      end
+
+      # TODO: replace with better algorithm (https://github.com/rgeo/rgeo/issues/274)
+      # Very simple algorithm to determine if 2 LineStrings cross.
+      # Uses a nested for loop to look at each arc in the LineStrings and
+      # check if each arc crosses.
+      #
+      # @param [RGeo::Geographic::SphericalLineStringImpl] rhs
+      #
+      # @return [Boolean]
+      def crosses_line_string?(rhs)
+        arcs.each do |arc|
+          rhs.arcs.each do |rhs_arc|
+            next unless arc.intersects_arc?(rhs_arc)
+
+            # check that endpoints aren't the intersection point
+            is_endpoint = arc.contains_point?(rhs_arc.s) || arc.contains_point?(rhs_arc.e) || rhs_arc.contains_point?(arc.s) || rhs_arc.contains_point?(arc.e)
+            return true unless is_endpoint
+          end
+        end
+
+        false
       end
     end
 
@@ -150,7 +232,7 @@ module RGeo
         centroid_lat /= (6.0 * signed_area)
         centroid_lng /= (6.0 * signed_area)
 
-        RGeo::Geographic.spherical_factory.point(centroid_lat, centroid_lng)
+        factory.point(centroid_lat, centroid_lng)
       end
     end
   end

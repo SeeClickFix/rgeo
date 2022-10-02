@@ -45,6 +45,14 @@ module RGeo
         @zgeometry.dimension
       end
 
+      def coordinate_dimension
+        4
+      end
+
+      def spatial_dimension
+        3
+      end
+
       def geometry_type
         @zgeometry.geometry_type
       end
@@ -65,12 +73,30 @@ module RGeo
         @factory.instance_variable_get(:@wkb_generator).generate(self)
       end
 
+      def empty?
+        @zgeometry.empty?
+      end
+
       def is_empty?
-        @zgeometry.is_empty?
+        warn "The is_empty? method is deprecated, please use the empty? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        empty?
+      end
+
+      def simple?
+        @zgeometry.simple?
       end
 
       def is_simple?
-        @zgeometry.is_simple?
+        warn "The is_simple? method is deprecated, please use the simple? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        simple?
+      end
+
+      def is_3d?
+        true
+      end
+
+      def measured?
+        true
       end
 
       def boundary
@@ -222,12 +248,22 @@ module RGeo
         point_n(num_points - 1)
       end
 
+      def closed?
+        @zgeometry.closed?
+      end
+
       def is_closed?
-        @zgeometry.is_closed?
+        warn "The is_closed? method is deprecated, please use the closed? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        closed?
+      end
+
+      def ring?
+        @zgeometry.ring?
       end
 
       def is_ring?
-        @zgeometry.is_ring?
+        warn "The is_ring? method is deprecated, please use the ring? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        ring?
       end
 
       def num_points
@@ -323,8 +359,13 @@ module RGeo
         @zgeometry.length
       end
 
+      def closed?
+        @zgeometry.closed?
+      end
+
       def is_closed?
-        @zgeometry.is_closed?
+        warn "The is_closed? method is deprecated, please use the closed? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        closed?
       end
 
       def coordinates

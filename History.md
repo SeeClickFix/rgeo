@@ -1,3 +1,76 @@
+### 3.0.0-rc.2 / 2022-07-07
+
+**Breaking Changes**
+
+* Remove `SRSDatabase` and `factory_generator` related methods #314
+
+**Minor Changes**
+
+* Implement `coordinate_dimension`, `spatial_dimension`, `is_3d?` and `measured?` for all factories.
+* Add `invalid_reason_location` method to the CAPI factory #310
+* Add `polygonize` method to the CAPI factory (@aleksejleonov, @tyfoan) #313
+
+**Bug Fixes**
+
+* Fix memory leak on failing geometry collection creation #301
+* Use polygon factory on build polygon centroid #306
+* Don't raise exception when topology-invalid geometry compared with itself (CAPI factory) #311
+
+### 3.0.0-rc.1 / 2022-03-22
+
+**Breaking Changes**
+
+* Major changes to validity handling through `ImplHelper::ValidityCheck` module (see [doc/Geometry-Validity.md](doc/Geometry-Validity.md)) #275
+* Add more robust validity checks to Ruby factory implementations through `ImplHelper::ValidOp` module #271
+* Deprecate all `is_*?` methods in favor of `*?` methods (stephenandersondev) #268
+* Deprecate `Collection#boundary` since it is undefined in GEOS/PostGIS
+* Deprecate `uses_lenient_assertions` flag for factories
+
+**Minor Changes**
+
+* Improve large MultiPolygon creation performance (Quiwin) #251
+* Change `ProjectedLinearRing#is_simple?` method to be uniform across geos versions #228
+* Add `LinearRing#intersects?`, `LinearRing#crosses?` to Ruby factory implementations
+* Improve error reporting from CAPI factory
+* Add `supports_*?` methods to the CAPI factory to get information about config flags
+* Implement `make_valid` in CAPI/FFI factories
+* Add `segment_intersection` method to cartesian library
+* Add `SweeplineIntersector` class to cartesian library
+* Add `PlanarGraph` class to cartesian library
+* Change `validate_geometry` methods to `init_geometry` methods that handle only quality of life functionality instead of validation as well
+* Add OGC SFS 1.2 methods to `RGeo::Feature::Geometry`.
+
+**Bug Fixes**
+
+* Fix CAPI equality (`==`) comparison on macos by using `GEOSEqualsExact_r` #270
+* Only require geos/ffi_* if FFI supported #297
+
+### 2.4.0 / 2022-01-19
+
+* Allow movable pointers for `GC.compact` (teckwan) #284
+* Refactor globals and GC mark them (e.g. avoid segv) (teckwan) #282
+
+### 2.3.1 / 2021-11-30
+
+* Fix core dump when cast returns a non Geos object #261
+* Change all `is_*?` method names to `*?` (stephenandersondev) #268
+* Fix lenient_assertion flags for `simple_mercator_factory` (thestelz) #278
+
+### 2.3.0 / 2021-04-16
+
+* Fix a memory leak in CAPI's `#invalid_reason`
+* `#invalid_reason` now must return `nil` if polygon is valid.
+* Add #geometries and utilize #each for Enumerable (mylesboone) #248
+
+### 2.2.0 / 2020-11-18
+
+* Add SphericalPolygonMethods#centroid (allknowingfrog) #208
+* Expand gemspec
+* Drop Ruby 2.3 support
+* Add a simple fallback for `Polygon#contains?` (Quiwin) #224
+* Add `ccw?` method for linear rings, with geos support #229
+* Add a simple fallback for `MultiPolygon/LineString#contains?` (Quiwin) #230 #232
+
 ### 2.1.1 / 2019-8-26
 
 * Fix BasicPolygonMethods#boundary #206 (ans82)

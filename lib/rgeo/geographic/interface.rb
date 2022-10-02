@@ -54,12 +54,6 @@ module RGeo
       #   Support a Z coordinate. Default is false.
       # [<tt>:has_m_coordinate</tt>]
       #   Support an M coordinate. Default is false.
-      # [<tt>:uses_lenient_assertions</tt>]
-      #   If set to true, assertion checking is disabled. This includes
-      #   simplicity checking on LinearRing, and validity checks on
-      #   Polygon and MultiPolygon. This may speed up creation of certain
-      #   objects, at the expense of not doing the proper checking for
-      #   OGC compliance. Default is false.
       # [<tt>:buffer_resolution</tt>]
       #   The resolution of buffers around geometries created by this
       #   factory. This controls the number of line segments used to
@@ -89,11 +83,6 @@ module RGeo
       #   visualization crs". You may alternatively wish to set the srid
       #   to 4326, indicating the WGS84 crs, but note that that value
       #   implies an ellipsoidal datum, not a spherical datum.
-      # [<tt>:srs_database</tt>]
-      #   Optional. If provided, the object should respond to #get and
-      #   #clear_cache. If both this and an SRID are
-      #   provided, they are used to look up the proj4 and coord_sys
-      #   objects from a spatial reference system database.
       # [<tt>:wkt_parser</tt>]
       #   Configure the parser for WKT. The value is a hash of
       #   configuration parameters for WKRep::WKTParser.new. Default is
@@ -118,20 +107,12 @@ module RGeo
         proj4 = opts[:proj4]
         coord_sys = opts[:coord_sys]
         srid = opts[:srid]
-        if (!proj4 || !coord_sys) && srid && (db_ = opts[:srs_database])
-          entry_ = db_.get(srid.to_i)
-          if entry_
-            proj4 ||= entry_.proj4
-            coord_sys ||= entry_.coord_sys
-          end
-        end
         srid ||= coord_sys.authority_code if coord_sys
         Geographic::Factory.new("Spherical",
           has_z_coordinate: opts[:has_z_coordinate],
           has_m_coordinate: opts[:has_m_coordinate],
           proj4: proj4 || proj_4055,
           coord_sys: coord_sys || coord_sys_4055,
-          uses_lenient_assertions: opts[:uses_lenient_assertions],
           buffer_resolution: opts[:buffer_resolution],
           wkt_parser: opts[:wkt_parser],
           wkb_parser: opts[:wkb_parser],
@@ -207,10 +188,8 @@ module RGeo
       #
       # You may also provide options understood by the underlying
       # projected Cartesian factory. For example, if GEOS is used for the
-      # projected factory, you may also set the
-      # <tt>:lenient_multi_polygon_assertions</tt> and
-      # <tt>:buffer_resolution</tt> options. See RGeo::Geos.factory for
-      # more details.
+      # projected factory, you may also set the <tt>:buffer_resolution</tt>
+      # options. See RGeo::Geos.factory for more details.
 
       def simple_mercator_factory(opts = {})
         factory = Geographic::Factory.new("Projected",
@@ -225,8 +204,6 @@ module RGeo
           has_m_coordinate: opts[:has_m_coordinate])
         projector = Geographic::SimpleMercatorProjector.new(factory,
           buffer_resolution: opts[:buffer_resolution],
-          lenient_multi_polygon_assertions: opts[:lenient_multi_polygon_assertions],
-          uses_lenient_assertions: opts[:uses_lenient_assertions],
           has_z_coordinate: opts[:has_z_coordinate],
           has_m_coordinate: opts[:has_m_coordinate])
         factory.projector = projector
@@ -258,9 +235,7 @@ module RGeo
       # and let this method construct a projection factory for you (which
       # it will do using the preferred Cartesian factory generator).
       # If you choose this second method, you may provide the proj4
-      # directly via the <tt>:projection_proj4</tt> option, or indirectly
-      # by providing both an <tt>:srid</tt> and a <tt>:srs_database</tt>
-      # to use to look up the coordinate system.
+      # via the <tt>:projection_proj4</tt> option.
       #
       # Following are detailed descriptions of the various options you can
       # pass to this method.
@@ -303,11 +278,6 @@ module RGeo
       #   The SRID value to use for the main geographic factory. Defaults
       #   to the given geographic coordinate system's authority code, or
       #   to 0 if no geographic coordinate system is known.
-      # [<tt>:srs_database</tt>]
-      #   Optional. If provided, the object should respond to #get and
-      #   #clear_cache. If both this and an SRID are
-      #   provided, they are used to look up the proj4 and coord_sys
-      #   objects from a spatial reference system database.
       # [<tt>:has_z_coordinate</tt>]
       #   Support a Z coordinate. Default is false.
       #   Note: this is ignored if a <tt>:projection_factory</tt> is
@@ -341,13 +311,11 @@ module RGeo
       # If a <tt>:projection_factory</tt> is _not_ provided, you may also
       # provide options for configuring the projected Cartesian factory.
       # For example, if GEOS is used for the projected factory, you may
-      # also set the <tt>:lenient_multi_polygon_assertions</tt> and
-      # <tt>:buffer_resolution</tt> options. See RGeo::Geos.factory for
-      # more details.
+      # also set the <tt>:buffer_resolution</tt> option. See RGeo::Geos.factory
+      # for more details.
 
       def projected_factory(opts = {})
         CoordSys.check!(:proj4)
-        db_ = opts[:srs_database]
         if (projection_factory = opts[:projection_factory])
           # Get the projection coordinate systems from the given factory
           projection_proj4 = projection_factory.proj4
@@ -362,14 +330,6 @@ module RGeo
           proj4 = opts[:proj4]
           coord_sys = opts[:coord_sys]
           srid = opts[:srid]
-          # Lookup srid from srs database if needed
-          if (!proj4 || !coord_sys) && srid && db_
-            entry_ = db_.get(srid.to_i)
-            if entry_
-              proj4 ||= entry_.proj4
-              coord_sys ||= entry_.coord_sys
-            end
-          end
           # Fall back to getting the values from the projection.
           proj4 ||= projection_proj4.get_geographic || _proj_4326
           coord_sys ||= projection_coord_sys.geographic_coordinate_system if projection_coord_sys
@@ -446,8 +406,6 @@ module RGeo
             srid: projection_srid,
             coord_sys: projection_coord_sys,
             buffer_resolution: opts[:buffer_resolution],
-            lenient_multi_polygon_assertions: opts[:lenient_multi_polygon_assertions],
-            uses_lenient_assertions: opts[:uses_lenient_assertions],
             has_z_coordinate: opts[:has_z_coordinate],
             has_m_coordinate: opts[:has_m_coordinate],
             wkt_parser: opts[:wkt_parser], wkt_generator: opts[:wkt_generator],

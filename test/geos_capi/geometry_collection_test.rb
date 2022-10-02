@@ -6,7 +6,7 @@
 #
 # -----------------------------------------------------------------------------
 
-require "test_helper"
+require_relative "../test_helper"
 
 class GeosGeometryCollectionTest < Minitest::Test # :nodoc:
   include RGeo::Tests::Common::GeometryCollectionTests
@@ -33,5 +33,16 @@ class GeosGeometryCollectionTest < Minitest::Test # :nodoc:
 
     assert_equal(noded.count, 4)
     assert(expected_lines.all? { |line| noded.include? line })
+  end
+
+  def test_polygonize_collection
+    input = @factory.parse_wkt(
+      "GEOMETRYCOLLECTION(LINESTRING(0 0, 1 1, 1 0, 0 0), POINT(2 2))"
+    )
+    expected = @factory.parse_wkt(
+      "GEOMETRYCOLLECTION(POLYGON ((0 0, 1 1, 1 0, 0 0)))"
+    )
+
+    assert_equal expected, input.polygonize
   end
 end if RGeo::Geos.capi_supported?

@@ -20,13 +20,13 @@ class GeosPointTest < Minitest::Test # :nodoc:
 
   def test_is_geos
     point = @factory.point(21, -22)
-    assert_equal(true, RGeo::Geos.is_geos?(point))
-    assert_equal(true, RGeo::Geos.is_capi_geos?(point))
-    assert_equal(false, RGeo::Geos.is_ffi_geos?(point))
+    assert_equal(true, RGeo::Geos.geos?(point))
+    assert_equal(true, RGeo::Geos.capi_geos?(point))
+    assert_equal(false, RGeo::Geos.ffi_geos?(point))
     point2 = @zmfactory.point(21, -22, 0, 0)
-    assert_equal(true, RGeo::Geos.is_geos?(point2))
-    assert_equal(true, RGeo::Geos.is_capi_geos?(point2))
-    assert_equal(false, RGeo::Geos.is_ffi_geos?(point2))
+    assert_equal(true, RGeo::Geos.geos?(point2))
+    assert_equal(true, RGeo::Geos.capi_geos?(point2))
+    assert_equal(false, RGeo::Geos.ffi_geos?(point2))
   end
 
   def test_has_no_projection
@@ -57,5 +57,12 @@ class GeosPointTest < Minitest::Test # :nodoc:
     factory = RGeo::Geos.factory(wkb_generator: :geos)
     point = factory.point(11, 12)
     assert_equal(Encoding::ASCII_8BIT, point.as_binary.encoding)
+  end
+
+  def test_polygonize
+    input = @factory.parse_wkt("POINT (1 1)")
+    expected = @factory.parse_wkt("GEOMETRYCOLLECTION EMPTY")
+
+    assert_equal expected, input.polygonize
   end
 end if RGeo::Geos.capi_supported?

@@ -14,6 +14,8 @@ if RUBY_DESCRIPTION =~ /^jruby\s/
 else
   require "mkmf"
 
+  $CFLAGS << " -DRGEO_GEOS_DEBUG" if ENV.key?("DEBUG") || ENV.key?("RGEO_GEOS_DEBUG")
+
   geosconfig = with_config("geos-config") || find_executable("geos-config")
 
   if geosconfig
@@ -31,7 +33,9 @@ else
     have_func("GEOSPreparedContains_r", "geos_c.h")
     have_func("GEOSPreparedDisjoint_r", "geos_c.h")
     have_func("GEOSUnaryUnion_r", "geos_c.h")
+    have_func("GEOSCoordSeq_isCCW_r", "geos_c.h")
     have_func("rb_memhash", "ruby.h")
+    have_func("rb_gc_mark_movable", "ruby.h")
   end
 
   if found_geos_

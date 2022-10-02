@@ -31,30 +31,45 @@ module RGeo
       # Returns true if the given feature is a CAPI GEOS feature, or if
       # the given factory is a CAPI GEOS factory.
 
-      def is_capi_geos?(object)
+      def capi_geos?(object)
         CAPI_SUPPORTED &&
           (CAPIFactory === object || CAPIGeometryMethods === object ||
           ZMFactory === object && CAPIFactory === object.z_factory ||
           ZMGeometryMethods === object && CAPIGeometryMethods === object.z_geometry)
       end
 
+      def is_capi_geos?(object)
+        warn "The is_capi_geos? method is deprecated, please use the capi_geos? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        capi_geos?(object)
+      end
+
       # Returns true if the given feature is an FFI GEOS feature, or if
       # the given factory is an FFI GEOS factory.
 
-      def is_ffi_geos?(object)
+      def ffi_geos?(object)
         FFI_SUPPORTED &&
           (FFIFactory === object || FFIGeometryMethods === object ||
           ZMFactory === object && FFIFactory === object.z_factory ||
           ZMGeometryMethods === object && FFIGeometryMethods === object.z_geometry)
       end
 
+      def is_ffi_geos?(object)
+        warn "The is_ffi_geos? method is deprecated, please use the ffi_geos? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        ffi_geos?(object)
+      end
+
       # Returns true if the given feature is a GEOS feature, or if the given
       # factory is a GEOS factory. Does not distinguish between CAPI and FFI.
 
-      def is_geos?(object)
+      def geos?(object)
         CAPI_SUPPORTED && (CAPIFactory === object || CAPIGeometryMethods === object) ||
           FFI_SUPPORTED && (FFIFactory === object || FFIGeometryMethods === object) ||
           ZMFactory === object || ZMGeometryMethods === object
+      end
+
+      def is_geos?(object)
+        warn "The is_geos? method is deprecated, please use the geos? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        geos?(object)
       end
 
       # Returns the GEOS library version as a string of the format "x.y.z".
@@ -101,13 +116,6 @@ module RGeo
       #   Specifies which native interface to use. Possible values are
       #   <tt>:capi</tt> and <tt>:ffi</tt>. The default is the value
       #   of the preferred_native_interface.
-      # [<tt>:uses_lenient_multi_polygon_assertions</tt>]
-      #   If set to true, assertion checking on MultiPolygon is disabled.
-      #   This may speed up creation of MultiPolygon objects, at the
-      #   expense of not doing the proper checking for OGC MultiPolygon
-      #   compliance. See RGeo::Feature::MultiPolygon for details on
-      #   the MultiPolygon assertions. Default is false. Also called
-      #   <tt>:lenient_multi_polygon_assertions</tt>.
       # [<tt>:buffer_resolution</tt>]
       #   The resolution of buffers around geometries created by this
       #   factory. This controls the number of line segments used to
@@ -127,11 +135,6 @@ module RGeo
       #   The coordinate system in OGC form, either as a subclass of
       #   CoordSys::CS::CoordinateSystem, or as a string in WKT format.
       #   Optional.
-      # [<tt>:srs_database</tt>]
-      #   Optional. If provided, the object should respond to #get and
-      #   #clear_cache. If both this and an SRID are
-      #   provided, they are used to look up the proj4 and coord_sys
-      #   objects from a spatial reference system database.
       # [<tt>:has_z_coordinate</tt>]
       #   Support <tt>z_coordinate</tt>. Default is false.
       # [<tt>:has_m_coordinate</tt>]
@@ -174,7 +177,6 @@ module RGeo
       #   operation that would benefit from it is called. The latter
       #   never automatically generates a prepared geometry (unless you
       #   generate one explicitly using the <tt>prepare!</tt> method).
-
       def factory(opts = {})
         if supported?
           native_interface = opts[:native_interface] || Geos.preferred_native_interface
@@ -186,18 +188,6 @@ module RGeo
             CAPIFactory.create(opts)
           end
         end
-      end
-
-      # Returns a Feature::FactoryGenerator that creates Geos-backed
-      # factories. The given options are used as the default options.
-      #
-      # A common case for this is to provide the <tt>:srs_database</tt>
-      # as a default. Then, the factory generator need only be passed
-      # an SRID and it will automatically fetch the appropriate Proj4
-      # and CoordSys objects.
-
-      def factory_generator(defaults = {})
-        proc { |c| factory(defaults.merge(c)) }
       end
     end
   end

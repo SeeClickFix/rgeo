@@ -6,7 +6,9 @@
 #
 # -----------------------------------------------------------------------------
 
-require "test_helper"
+require "ostruct"
+require_relative "../test_helper"
+require_relative "../common/validity_tests"
 
 class GeosMiscTest < Minitest::Test # :nodoc:
   def setup
@@ -57,6 +59,12 @@ class GeosMiscTest < Minitest::Test # :nodoc:
     geom2 = @factory.line_string([])
     assert(!geom1.eql?(geom2))
     assert(geom1.equals?(geom2))
+  end
+
+  def test_invalid_geometry_equal_itself
+    geom = @factory.parse_wkt("MULTIPOLYGON (((0 0, 1 1, 1 0, 0 0)), ((0 0, 2 2, 2 0, 0 0)))")
+    assert(geom.eql?(geom))
+    assert(geom.equals?(geom))
   end
 
   def test_prepare
@@ -132,9 +140,16 @@ class GeosMiscTest < Minitest::Test # :nodoc:
     expected = @factory.parse_wkt("GEOMETRYCOLLECTION (POINT (60 140),   LINESTRING (40 90, 40 140), LINESTRING (160 90, 160 140), POLYGON ((0 0, 0 90, 40 90, 90 90, 90 0, 0 0)), POLYGON ((120 0, 120 90, 160 90, 210 90, 210 0, 120 0)))")
     geom = collection.unary_union
     if RGeo::Geos::CAPIFactory._supports_unary_union?
-      assert(geom.eql?(expected))
+      # Note that here `.eql?` is not guaranteed on all GEOS implementation.
+      assert(geom == expected)
     else
       assert_equal(nil, geom)
+    end
+  end
+
+  def test_casting_dumb_objects
+    assert_raises(TypeError) do
+      RGeo::Geos.factory.point(1, 1).contains?(OpenStruct.new(factory: RGeo::Geos.factory))
     end
   end
 end if RGeo::Geos.capi_supported?

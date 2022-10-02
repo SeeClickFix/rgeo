@@ -21,8 +21,16 @@
 #ifdef HAVE_GEOSUNARYUNION_R
 #define RGEO_GEOS_SUPPORTS_UNARYUNION
 #endif
+#ifdef HAVE_GEOSCOORDSEQ_ISCCW_R
+#define RGEO_GEOS_SUPPORTS_ISCCW
+#endif
 #ifdef HAVE_RB_MEMHASH
 #define RGEO_SUPPORTS_NEW_HASHING
+#endif
+#ifdef HAVE_RB_GC_MARK_MOVABLE
+#define mark rb_gc_mark_movable
+#else
+#define mark rb_gc_mark
 #endif
 
 #ifndef RGEO_SUPPORTS_NEW_HASHING
@@ -39,3 +47,10 @@
 #define RGEO_BEGIN_C
 #define RGEO_END_C
 #endif
+
+// https://ozlabs.org/~rusty/index.cgi/tech/2008-04-01.html
+#define streq(a, b) (!strcmp((a),(b)))
+
+// When using ruby ALLOC* macros, we are using ruby_xmalloc, which counterpart
+// is ruby_xfree. This macro helps enforcing that by showing us the way.
+#define FREE ruby_xfree

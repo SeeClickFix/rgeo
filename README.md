@@ -1,9 +1,15 @@
 ## RGeo
 
 [![Gem Version](https://badge.fury.io/rb/rgeo.svg)](http://badge.fury.io/rb/rgeo)
-[![Build Status](https://travis-ci.org/rgeo/rgeo.svg?branch=master)](https://travis-ci.org/rgeo/rgeo)
+[![CI](https://github.com/rgeo/rgeo/workflows/CI/badge.svg)](https://github.com/rgeo/rgeo/actions?query=workflow%3ACI+branch%3Amain+event%3Apush)
 
 RGeo is a geospatial data library for Ruby.
+
+:warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning:
+
+This organization is looking for maintainers, see [this issue](https://github.com/rgeo/rgeo/issues/216) for more information.
+
+:warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning::warning:
 
 ### Summary
 
@@ -61,7 +67,7 @@ or include it in your Gemfile:
 gem "rgeo"
 ```
 
-If you are using proj.4 extensions, include  
+If you are using proj.4 extensions, include
 [`rgeo-proj4`](https://github.com/rgeo/rgeo-proj4):
 
 ```ruby
@@ -102,25 +108,42 @@ ActiveRecord connection adapter for SpatiaLite, based on sqlite3 (*not maintaine
 
 RDoc Documentation is available at https://www.rubydoc.info/gems/rgeo
 
-Contributions are welcome. Please read the 
-[Contributing guidelines](https://github.com/rgeo/rgeo/blob/master/CONTRIBUTING.md).
+Contributions are welcome. Please read the
+[Contributing guidelines](https://github.com/rgeo/rgeo/blob/main/CONTRIBUTING.md).
 
-Support may be available on the 
+Support may be available on the
 [rgeo-users google group](https://groups.google.com/forum/#!forum/rgeo-users)
 or on [Stack Overflow](https://stackoverflow.com/questions/tagged/rgeo).
 
+### Documentation
 
+You can see more in-depth documentation in the `doc` folder. Factories and
+methods are documented inline, you should consider checking
+https://rubydoc.info/gems/rgeo with the version you are currently using. Or
+generate documentation locally if you're working on RGeo: `yardoc server`.
+
+Here's the current list of available topics:
+
+- [An introduction to Spatial Programming With RGeo](https://github.com/rgeo/rgeo/blob/main/doc/An-Introduction-to-Spatial-Programming-With-RGeo.md)
+- [Enable GEOS and Proj4 on Heroku](https://github.com/rgeo/rgeo/blob/main/doc/Enable-GEOS-and-Proj4-on-Heroku.md)
+- [Installing GEOS](https://github.com/rgeo/rgeo/blob/main/doc/Installing-GEOS.md)
+- [Factory Compatibility](https://github.com/rgeo/rgeo/blob/main/doc/Factory-Compatibility.md)
+- [Which factory should I use?](https://github.com/rgeo/rgeo/blob/main/doc/Which-factory-should-I-use.md)
+- [Geometry validity handling](https://github.com/rgeo/rgeo/blob/main/doc/Geometry-Validity.md)
+- [Examples](https://github.com/rgeo/rgeo/blob/main/doc/Examples.md)
+- [Who uses `rgeo`?](https://github.com/rgeo/rgeo/blob/main/doc/Gallery.md)
+
+You can see an exhaustive and up to date list at https://rubydoc.info/gems/rgeo/index.
 ### Acknowledgments
 
-RGeo was created by [Daniel Azuma](http://www.daniel-azuma.com).
-[Tee Parham](https://github.com/teeparham) is the current maintainer.
+[Daniel Azuma](http://www.daniel-azuma.com) created RGeo.
+[Tee Parham](http://twitter.com/teeparham) is a former maintainer.
+[Keith Doggett](http://www.github.com/keithdoggett), [Ulysse Buonomo](http://www.github.com/BuonOmo) are current maintainers.
 
-Thanks to [Pirq](http://www.pirq.com) and [Neighborland](https://neighborland.com)
-for development support.
+Development is supported by:
 
-Thanks to [Travis-CI](https://travis-ci.org) for CI testing.
-
-Thanks to [JetBrains](https://www.jetbrains.com/?from=rgeo) for RubyMine license.
+- [Klaxit](https://www.github.com/klaxit)
+- Goldfish Ads
 
 RGeo calls the GEOS library to handle most Cartesian geometric calculations,
 and the Proj4 library to handle projections and coordinate transformations.
@@ -135,4 +158,4 @@ by [J Smith](https://github.com/dark-panda).
 
 Copyright (c) Daniel Azuma, Tee Parham
 
-[License](https://github.com/rgeo/rgeo/blob/master/LICENSE.txt)
+[License](https://github.com/rgeo/rgeo/blob/main/LICENSE.txt)

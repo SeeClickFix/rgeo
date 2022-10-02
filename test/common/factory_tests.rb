@@ -64,9 +64,36 @@ module RGeo
 
         def test_psych_dump_load_factory
           data = Psych.dump(@factory)
-          factory2 = Psych.load(data)
+          factory2 = psych_load(data)
           assert_equal(@factory, factory2)
           assert_equal(srid, factory2.srid)
+        end
+
+        def test_coordinate_dimension
+          dim = 2
+          dim += 1 if @factory.property(:has_z_coordinate)
+          dim += 1 if @factory.property(:has_m_coordinate)
+
+          geom = @factory.point(-10, 20)
+          assert_equal(dim, geom.coordinate_dimension)
+        end
+
+        def test_spatial_dimension
+          dim = 2
+          dim += 1 if @factory.property(:has_z_coordinate)
+
+          geom = @factory.point(-10, 20)
+          assert_equal(dim, geom.spatial_dimension)
+        end
+
+        def test_is_3d
+          geom = @factory.point(-10, 20)
+          assert_equal(geom.is_3d?, @factory.property(:has_z_coordinate))
+        end
+
+        def test_measured
+          geom = @factory.point(-10, 20)
+          assert_equal(geom.measured?, @factory.property(:has_m_coordinate))
         end
       end
     end

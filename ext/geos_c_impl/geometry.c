@@ -11,6 +11,9 @@
 #include <ruby.h>
 #include <geos_c.h>
 
+#include "globals.h"
+
+#include "errors.h"
 #include "factory.h"
 #include "geometry.h"
 
@@ -180,13 +183,11 @@ static VALUE method_geometry_geometry_type(VALUE self)
 {
   VALUE result;
   RGeo_GeometryData* self_data;
-  const GEOSGeometry* self_geom;
 
   result = Qnil;
   self_data = RGEO_GEOMETRY_DATA_PTR(self);
-  self_geom = self_data->geom;
-  if (self_geom) {
-    result = RGEO_FACTORY_DATA_PTR(self_data->factory)->globals->feature_geometry;
+  if (self_data->geom) {
+    result = rgeo_feature_geometry_module;
   }
   return result;
 }
@@ -271,7 +272,7 @@ static VALUE method_geometry_as_text(VALUE self)
     factory_data = RGEO_FACTORY_DATA_PTR(self_data->factory);
     wkt_generator = factory_data->wkrep_wkt_generator;
     if (!NIL_P(wkt_generator)) {
-      result = rb_funcall(wkt_generator, factory_data->globals->id_generate, 1, self);
+      result = rb_funcall(wkt_generator, rb_intern("generate"), 1, self);
     }
     else {
       wkt_writer = factory_data->wkt_writer;
@@ -310,7 +311,7 @@ static VALUE method_geometry_as_binary(VALUE self)
     factory_data = RGEO_FACTORY_DATA_PTR(self_data->factory);
     wkb_generator = factory_data->wkrep_wkb_generator;
     if (!NIL_P(wkb_generator)) {
-      result = rb_funcall(wkb_generator, factory_data->globals->id_generate, 1, self);
+      result = rb_funcall(wkb_generator, rb_intern("generate"), 1, self);
     }
     else {
       wkb_writer = factory_data->wkb_writer;
@@ -384,6 +385,11 @@ static VALUE method_geometry_equals(VALUE self, VALUE rhs)
   const GEOSGeometry* rhs_geom;
   GEOSContextHandle_t self_context;
   char val;
+
+  // Shortcut when self and rhs are the same object.
+  if (self == rhs) {
+    return Qtrue;
+  }
 
   result = Qnil;
   self_data = RGEO_GEOMETRY_DATA_PTR(self);
@@ -863,24 +869,21 @@ static VALUE method_geometry_union(VALUE self, VALUE rhs)
 
 static VALUE method_geometry_unary_union(VALUE self)
 {
-  VALUE result;
+#ifdef RGEO_GEOS_SUPPORTS_UNARYUNION
   RGeo_GeometryData* self_data;
   const GEOSGeometry* self_geom;
 
-  result = Qnil;
-
-#ifdef RGEO_GEOS_SUPPORTS_UNARYUNION
   self_data = RGEO_GEOMETRY_DATA_PTR(self);
   self_geom = self_data->geom;
   if (self_geom) {
     GEOSContextHandle_t self_context = self_data->geos_context;
-    result = rgeo_wrap_geos_geometry(self_data->factory,
+    return rgeo_wrap_geos_geometry(self_data->factory,
       GEOSUnaryUnion_r(self_context, self_geom),
       Qnil);
   }
 #endif
 
-  return result;
+  return Qnil;
 }
 
 
@@ -1044,15 +1047,63 @@ static VALUE method_geometry_invalid_reason(VALUE self)
   self_data = RGEO_GEOMETRY_DATA_PTR(self);
   self_geom = self_data->geom;
   if (self_geom) {
-    str = GEOSisValidReason_r(self_data->geos_context, self_geom);
-    if (str) {
-      result = rb_str_new2(str);
-    }
-    else {
-      result = rb_str_new2("Exception");
-    }
+    // We use NULL there to tell GEOS that we don't care about the position.
+    switch(GEOSisValidDetail_r(self_data->geos_context, self_geom, 0, &str, NULL)) {
+      case 0: // invalid
+        result = rb_utf8_str_new_cstr(str);
+      case 1: // valid
+        break;
+      case 2: // exception
+      default:
+        result = rb_utf8_str_new_cstr("Exception");
+        break;
+    };
+    if (str) GEOSFree_r(self_data->geos_context, str);
   }
   return result;
+}
+
+static VALUE method_geometry_invalid_reason_location(VALUE self)
+{
+  VALUE result;
+  RGeo_GeometryData* self_data;
+  const GEOSGeometry* self_geom;
+  GEOSGeometry* location = NULL;
+
+  result = Qnil;
+  self_data = RGEO_GEOMETRY_DATA_PTR(self);
+  self_geom = self_data->geom;
+  if (self_geom) {
+    // We use NULL there to tell GEOS that we don't care about the reason.
+    switch(GEOSisValidDetail_r(self_data->geos_context, self_geom, 0, NULL, &location)) {
+      case 0: // invalid
+        result = rgeo_wrap_geos_geometry(self_data->factory, location, Qnil);
+      case 1: // valid
+        break;
+      case 2: // exception
+        break;
+      default:
+        break;
+    };
+  }
+  return result;
+}
+
+static VALUE method_geometry_make_valid(VALUE self)
+{
+  RGeo_GeometryData* self_data;
+  const GEOSGeometry* self_geom;
+  GEOSGeometry* valid_geom;
+  self_data = RGEO_GEOMETRY_DATA_PTR(self);
+  self_geom = self_data->geom;
+  if (!self_geom) return Qnil;
+
+  // According to GEOS implementation, MakeValid always returns.
+  valid_geom = GEOSMakeValid_r(self_data->geos_context, self_geom);
+  if (!valid_geom) {
+    rb_raise(rb_eRGeoInvalidGeometry, "%"PRIsVALUE, method_geometry_invalid_reason(self));
+  }
+  return rgeo_wrap_geos_geometry(self_data->factory, valid_geom, Qnil);
 }
 
 static VALUE method_geometry_point_on_surface(VALUE self)
@@ -1070,15 +1121,64 @@ static VALUE method_geometry_point_on_surface(VALUE self)
   return result;
 }
 
+/**
+  * call-seq:
+  *   some.polygonize -> RGeo::Feature::GeometryCollection
+  *
+  * Polygonizes a set of Geometries which contain linework that
+  * represents the edges of a planar graph.
+  *
+  * All types of Geometry are accepted as input;
+  * the constituent linework is extracted as the edges to be polygonized.
+  * 
+  * The edges must be correctly noded;
+  * that is, they must only meet at their endpoints and not overlap anywhere.
+  *
+  * @see https://libgeos.org/doxygen/geos__c_8h.html#a9d98e448d3b846d591c726d1c0000d25 GEOSPolygonize
+  */
+static VALUE method_geometry_polygonize(VALUE self)
+{
+  VALUE result;
+  RGeo_GeometryData* self_data;
+  const GEOSGeometry* self_geom;
+  GEOSGeometry* geos_polygon_collection;
+
+  result = Qnil;
+  self_data = RGEO_GEOMETRY_DATA_PTR(self);
+  self_geom = self_data->geom;
+  if (self_geom) {
+    geos_polygon_collection = GEOSPolygonize_r(self_data->geos_context, &self_geom, 1);
+
+    if (geos_polygon_collection == NULL) {
+      rb_raise(rb_eGeosError, "GEOS can't polygonize this geometry.");
+    }
+
+    result = rgeo_wrap_geos_geometry(self_data->factory, geos_polygon_collection, Qnil);
+  }
+  return result;
+}
+
+VALUE rgeo_geos_geometries_strict_eql(GEOSContextHandle_t context, const GEOSGeometry* geom1, const GEOSGeometry* geom2)
+{
+  switch (GEOSEqualsExact_r(context, geom1, geom2, 0.0)) {
+  case 0:
+    return Qfalse;
+  case 1:
+    return Qtrue;
+  case 2:
+  default:
+    rb_raise(rb_eGeosError, "Cannot test equality.");
+  }
+}
 
 /**** INITIALIZATION FUNCTION ****/
 
 
-void rgeo_init_geos_geometry(RGeo_Globals* globals)
+void rgeo_init_geos_geometry()
 {
   VALUE geos_geometry_methods;
 
-  geos_geometry_methods = rb_define_module_under(globals->geos_module, "CAPIGeometryMethods");
+  geos_geometry_methods = rb_define_module_under(rgeo_geos_module, "CAPIGeometryMethods");
 
   rb_define_method(geos_geometry_methods, "factory=", method_geometry_set_factory, 1);
   rb_define_method(geos_geometry_methods, "initialize_copy", method_geometry_initialize_copy, 1);
@@ -1094,8 +1194,8 @@ void rgeo_init_geos_geometry(RGeo_Globals* globals)
   rb_define_method(geos_geometry_methods, "boundary", method_geometry_boundary, 0);
   rb_define_method(geos_geometry_methods, "_as_text", method_geometry_as_text, 0);
   rb_define_method(geos_geometry_methods, "as_binary", method_geometry_as_binary, 0);
-  rb_define_method(geos_geometry_methods, "is_empty?", method_geometry_is_empty, 0);
-  rb_define_method(geos_geometry_methods, "is_simple?", method_geometry_is_simple, 0);
+  rb_define_method(geos_geometry_methods, "empty?", method_geometry_is_empty, 0);
+  rb_define_method(geos_geometry_methods, "simple?", method_geometry_is_simple, 0);
   rb_define_method(geos_geometry_methods, "equals?", method_geometry_equals, 1);
   rb_define_method(geos_geometry_methods, "==", method_geometry_equals, 1);
   rb_define_method(geos_geometry_methods, "rep_equals?", method_geometry_eql, 1);
@@ -1124,7 +1224,10 @@ void rgeo_init_geos_geometry(RGeo_Globals* globals)
   rb_define_method(geos_geometry_methods, "sym_difference", method_geometry_sym_difference, 1);
   rb_define_method(geos_geometry_methods, "valid?", method_geometry_is_valid, 0);
   rb_define_method(geos_geometry_methods, "invalid_reason", method_geometry_invalid_reason, 0);
+  rb_define_method(geos_geometry_methods, "invalid_reason_location", method_geometry_invalid_reason_location, 0);
   rb_define_method(geos_geometry_methods, "point_on_surface", method_geometry_point_on_surface, 0);
+  rb_define_method(geos_geometry_methods, "make_valid", method_geometry_make_valid, 0);
+  rb_define_method(geos_geometry_methods, "polygonize", method_geometry_polygonize, 0);
 }
 
 

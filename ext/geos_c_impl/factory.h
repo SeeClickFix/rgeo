@@ -10,59 +10,13 @@
 
 RGEO_BEGIN_C
 
-
-/*
-  Per-interpreter globals.
-  Most of these are cached references to commonly used classes, modules,
-  and symbols so we don't have to do a lot of constant lookups and calls
-  to rb_intern.
-*/
-typedef struct {
-  VALUE feature_module;
-  VALUE feature_geometry;
-  VALUE feature_point;
-  VALUE feature_line_string;
-  VALUE feature_linear_ring;
-  VALUE feature_line;
-  VALUE feature_polygon;
-  VALUE feature_geometry_collection;
-  VALUE feature_multi_point;
-  VALUE feature_multi_line_string;
-  VALUE feature_multi_polygon;
-  VALUE geos_module;
-  VALUE geos_geometry;
-  VALUE geos_point;
-  VALUE geos_line_string;
-  VALUE geos_linear_ring;
-  VALUE geos_line;
-  VALUE geos_polygon;
-  VALUE geos_geometry_collection;
-  VALUE geos_multi_point;
-  VALUE geos_multi_line_string;
-  VALUE geos_multi_polygon;
-  ID id_cast;
-  ID id_eql;
-  ID id_generate;
-  ID id_enum_for;
-  ID id_hash;
-  VALUE sym_force_new;
-  VALUE sym_keep_subtype;
-#ifndef RGEO_GEOS_SUPPORTS_SETOUTPUTDIMENSION
-  VALUE psych_wkt_generator;
-  VALUE marshal_wkb_generator;
-#endif
-} RGeo_Globals;
-
-
 /*
   Wrapped structure for Factory objects.
   A factory encapsulates the GEOS context, and GEOS serializer settings.
   It also stores the SRID for all geometries created by this factory,
   and the resolution for buffers created for this factory's geometries.
-  Finally, it provides easy access to the globals.
 */
 typedef struct {
-  RGeo_Globals* globals;
   GEOSContextHandle_t geos_context;
   GEOSWKTReader* wkt_reader;
   GEOSWKBReader* wkb_reader;
@@ -83,12 +37,35 @@ typedef struct {
   int buffer_resolution;
 } RGeo_FactoryData;
 
-#define RGEO_FACTORYFLAGS_LENIENT_MULTIPOLYGON 1
-#define RGEO_FACTORYFLAGS_SUPPORTS_Z 2
-#define RGEO_FACTORYFLAGS_SUPPORTS_M 4
-#define RGEO_FACTORYFLAGS_SUPPORTS_Z_OR_M 6
-#define RGEO_FACTORYFLAGS_PREPARE_HEURISTIC 8
+/*
+  Flags that are used to pass options when creating a factory.
+  They are available in ruby under RGeo::Geos::CAPIFactory::FLAG_name
+  where name is the name below without the RGEO_FACTORYFLAGS_ prefix.
+ */
+#define RGEO_FACTORYFLAGS_SUPPORTS_Z                      0b0010
+#define RGEO_FACTORYFLAGS_SUPPORTS_M                      0b0100
+#define RGEO_FACTORYFLAGS_SUPPORTS_Z_OR_M                 (RGEO_FACTORYFLAGS_SUPPORTS_Z | RGEO_FACTORYFLAGS_SUPPORTS_M)
+#define RGEO_FACTORYFLAGS_PREPARE_HEURISTIC               0b1000
 
+/* call-seq:
+ *   RGeo::Geos::CAPIFactory.supports_z? -> true or false
+ */
+VALUE method_factory_supports_z_p(VALUE self);
+
+/* call-seq:
+ *   RGeo::Geos::CAPIFactory.supports_m? -> true or false
+ */
+VALUE method_factory_supports_m_p(VALUE self);
+
+/* call-seq:
+ *   RGeo::Geos::CAPIFactory.supports_z_or_m? -> true or false
+ */
+VALUE method_factory_supports_z_or_m_p(VALUE self);
+
+/* call-seq:
+ *   RGeo::Geos::CAPIFactory.prepare_heuristic? -> true or false
+ */
+VALUE method_factory_prepare_heuristic_p(VALUE self);
 
 /*
   Wrapped structure for Geometry objects.
@@ -120,18 +97,30 @@ typedef struct {
 } RGeo_GeometryData;
 
 
+// Data types which indicate how RGeo types should be managed by Ruby.
+extern const rb_data_type_t rgeo_factory_type;
+
+extern const rb_data_type_t rgeo_geometry_type;
+
+
+// Convenient macros for checking the type of data from Ruby
+#define RGEO_FACTORY_TYPEDDATA_P(object) (_RGEO_TYPEDDATA_P(object, &rgeo_factory_type))
+#define RGEO_GEOMETRY_TYPEDDATA_P(object) (_RGEO_TYPEDDATA_P(object, &rgeo_geometry_type))
+
+#define _RGEO_TYPEDDATA_P(object, data_type) (TYPE(object) == T_DATA && RTYPEDDATA(object)->typed_flag == 1 && RTYPEDDATA(object)->type == data_type)
+
 // Returns the RGeo_FactoryData* given a ruby Factory object
-#define RGEO_FACTORY_DATA_PTR(factory) ((RGeo_FactoryData*)DATA_PTR(factory))
+#define RGEO_FACTORY_DATA_PTR(factory) ((RGeo_FactoryData*)RTYPEDDATA_DATA(factory))
 
 // Returns the RGeo_GeometryData* given a ruby Geometry object
-#define RGEO_GEOMETRY_DATA_PTR(geometry) ((RGeo_GeometryData*)DATA_PTR(geometry))
+#define RGEO_GEOMETRY_DATA_PTR(geometry) ((RGeo_GeometryData*)RTYPEDDATA_DATA(geometry))
 
 
 /*
   Initializes the factory module. This should be called first in the
   initialization process.
 */
-RGeo_Globals* rgeo_init_geos_factory();
+void rgeo_init_geos_factory();
 
 /*
   Given a GEOS geometry handle, wraps it in a ruby Geometry object of the
@@ -178,8 +167,15 @@ const GEOSGeometry* rgeo_convert_to_geos_geometry(VALUE factory, VALUE obj, VALU
   result of this function to build a GEOS-backed clone of the original
   geometry, or to include the given geometry in a collection while keeping
   the klasses intact.
+
+  The state parameter is given to follow `rb_protect*` ruby methods: this
+  method calls `#cast`, and this call may raise. if it does raise, state
+  will be set to a non-zero value, and you'll have access to the error
+  in `rb_errinfo()`. IT IS THE CALLER'S RESPONSIBILITY TO PROPAGATE THE
+  ERROR. You could also discard the error with `rb_set_errinfo(Qnil)`,
+  this will just ignore the error altogether.
 */
-GEOSGeometry* rgeo_convert_to_detached_geos_geometry(VALUE obj, VALUE factory, VALUE type, VALUE* klasses);
+GEOSGeometry* rgeo_convert_to_detached_geos_geometry(VALUE obj, VALUE factory, VALUE type, VALUE* klasses, int* state);
 
 /*
   Returns 1 if the given ruby object is a GEOS Geometry implementation,
@@ -188,19 +184,15 @@ GEOSGeometry* rgeo_convert_to_detached_geos_geometry(VALUE obj, VALUE factory, V
 char rgeo_is_geos_object(VALUE obj);
 
 /*
+  Raises a rgeo error if the object is not a GEOS Geometry implementation.
+*/
+void rgeo_check_geos_object(VALUE obj);
+
+/*
   Gets the underlying GEOS geometry for a given ruby object. Returns NULL
   if the given ruby object is not a GEOS geometry wrapper.
 */
 const GEOSGeometry* rgeo_get_geos_geometry_safe(VALUE obj);
-
-/*
-  Compares the coordinate sequences for two given GEOS geometries.
-  The two given geometries MUST be of types backed directly by
-  coordinate sequences-- i.e. points or line strings.
-  Returns Qtrue if the two coordinate sequences are equal, Qfalse
-  if they are inequal, or Qnil if an error occurs.
-*/
-VALUE rgeo_geos_coordseqs_eql(GEOSContextHandle_t context, const GEOSGeometry* geom1, const GEOSGeometry* geom2, char check_z);
 
 /*
   Compares the ruby classes and geometry factories of the two given ruby

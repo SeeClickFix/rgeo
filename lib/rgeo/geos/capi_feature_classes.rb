@@ -6,10 +6,41 @@
 #
 # -----------------------------------------------------------------------------
 
+require_relative "../impl_helper/validity_check"
+
 module RGeo
   module Geos
-    module CAPIGeometryMethods # :nodoc:
+    module CAPIGeometryMethods
       include Feature::Instance
+
+      def coordinate_dimension
+        dim = 2
+        dim += 1 if factory.supports_z?
+        dim += 1 if factory.supports_m?
+        dim
+      end
+
+      def spatial_dimension
+        factory.supports_z? ? 3 : 2
+      end
+
+      def is_empty? # rubocop:disable Naming/PredicateName
+        warn "The is_empty? method is deprecated, please use the empty? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        empty?
+      end
+
+      def is_simple? # rubocop:disable Naming/PredicateName
+        warn "The is_simple? method is deprecated, please use the simple? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        simple?
+      end
+
+      def is_3d?
+        factory.supports_z?
+      end
+
+      def measured?
+        factory.supports_m?
+      end
 
       def inspect
         "#<#{self.class}:0x#{object_id.to_s(16)} #{as_text.inspect}>"
@@ -50,62 +81,107 @@ module RGeo
       alias to_s as_text
     end
 
+    module CAPIMultiLineStringMethods # :nodoc:
+      def is_closed? # rubocop:disable Naming/PredicateName
+        warn "The is_closed? method is deprecated, please use the closed? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        closed?
+      end
+    end
+
+    module CAPILineStringMethods # :nodoc:
+      def is_closed? # rubocop:disable Naming/PredicateName
+        warn "The is_closed? method is deprecated, please use the closed? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        closed?
+      end
+
+      def is_ring? # rubocop:disable Naming/PredicateName
+        warn "The is_ring? method is deprecated, please use the ring? counterpart, will be removed in v3" unless ENV["RGEO_SILENCE_DEPRECATION"]
+        ring?
+      end
+    end
+
     module CAPIGeometryCollectionMethods # :nodoc:
       include Enumerable
     end
 
-    class CAPIGeometryImpl # :nodoc:
+    class CAPIGeometryImpl
+      include Feature::Geometry
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
     end
 
-    class CAPIPointImpl # :nodoc:
+    class CAPIPointImpl
+      include Feature::Point
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPIPointMethods
     end
 
-    class CAPILineStringImpl  # :nodoc:
+    class CAPILineStringImpl
+      include Feature::LineString
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPILineStringMethods
     end
 
-    class CAPILinearRingImpl  # :nodoc:
+    class CAPILinearRingImpl
+      include Feature::LinearRing
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPILineStringMethods
       include CAPILinearRingMethods
+
+      def ccw?
+        RGeo::Cartesian::Analysis.ccw?(self)
+      end
     end
 
-    class CAPILineImpl # :nodoc:
+    class CAPILineImpl
+      include Feature::Line
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPILineStringMethods
       include CAPILineMethods
     end
 
-    class CAPIPolygonImpl # :nodoc:
+    class CAPIPolygonImpl
+      include Feature::Polygon
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPIPolygonMethods
     end
 
-    class CAPIGeometryCollectionImpl # :nodoc:
+    class CAPIGeometryCollectionImpl
+      include Feature::GeometryCollection
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPIGeometryCollectionMethods
     end
 
-    class CAPIMultiPointImpl # :nodoc:
+    class CAPIMultiPointImpl
+      include Feature::MultiPoint
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPIGeometryCollectionMethods
       include CAPIMultiPointMethods
     end
 
-    class CAPIMultiLineStringImpl # :nodoc:
+    class CAPIMultiLineStringImpl
+      include Feature::MultiLineString
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPIGeometryCollectionMethods
       include CAPIMultiLineStringMethods
     end
 
-    class CAPIMultiPolygonImpl # :nodoc:
+    class CAPIMultiPolygonImpl
+      include Feature::MultiPolygon
+      include ImplHelper::ValidityCheck
       include CAPIGeometryMethods
       include CAPIGeometryCollectionMethods
       include CAPIMultiPolygonMethods
     end
+
+    ImplHelper::ValidityCheck.override_classes
   end
 end
