@@ -8,6 +8,7 @@
 def create_dummy_makefile
   File.open("Makefile", "w") { |f_| f_.write(".PHONY: install\ninstall:\n") }
 end
+raise
 
 if RUBY_DESCRIPTION =~ /^jruby\s/
   create_dummy_makefile
