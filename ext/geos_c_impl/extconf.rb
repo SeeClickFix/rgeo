@@ -25,8 +25,6 @@ else
     end
   end
 
-  raise "this is rgeo build"
-
   found_geos_ = false
   if have_header("geos_c.h")
     found_geos_ = true if have_func("GEOSSetSRID_r", "geos_c.h")
